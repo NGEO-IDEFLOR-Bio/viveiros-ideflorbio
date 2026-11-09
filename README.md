@@ -2,7 +2,7 @@
 
 Aplicativo web de consulta do sistema de viveiros do **PROSAF**, desenvolvido pelo **NGEO** (Núcleo de Geoinformação) do **IDEFLOR-Bio**. O guia reúne a base de viveiros, o manual de montagem de 2020, os mapas oficiais e os documentos do projeto em uma interface de leitura e pesquisa.
 
-**Acesse:** [https://ngeo-ideflor-bio.github.io/viveiros/](https://ngeo-ideflor-bio.github.io/viveiros/)
+**Acesse:** [https://ngeo-ideflor-bio.github.io/viveiros-ideflorbio/](https://ngeo-ideflor-bio.github.io/viveiros-ideflorbio/)
 
 ---
 

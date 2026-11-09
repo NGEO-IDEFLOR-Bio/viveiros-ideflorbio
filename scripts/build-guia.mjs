@@ -426,7 +426,7 @@ if (!DATA_ONLY) {
   /* ------------------------------------------------------------------ */
   /* Sitemap                                                            */
   /* ------------------------------------------------------------------ */
-  const baseUrl = 'https://ngeo-ideflor-bio.github.io/viveiros/';
+  const baseUrl = 'https://ngeo-ideflor-bio.github.io/viveiros-ideflorbio/';
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
     '',
