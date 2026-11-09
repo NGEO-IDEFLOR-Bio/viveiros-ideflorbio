@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visualizador de Viveiros - IDEFLOR-Bio</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { margin: 0; height: 100%; font-family: 'Inter', sans-serif; overflow: hidden; }
+    #map { height: calc(100vh - 64px); width: 100%; z-index: 0; }
+    .leaflet-control-container .leaflet-control-attribution { font-size: 0.75rem; }
+
+    .leaflet-top.leaflet-right  { z-index: 2147483600 !important; }
+    .leaflet-bottom.leaflet-right { z-index: 2147483500 !important; }
+
+    .legend {
+      background-color: white; padding: 10px; border-radius: 5px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4); line-height: 22px; color: #555;
+    }
+    .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; border-radius: 4px; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 2147483647; opacity: 0; visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .modal-overlay.show { opacity: 1; visibility: visible; }
+    .modal-content {
+      background-color: white; padding: 24px; border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); max-width: 90%; max-height: 90%;
+      overflow-y: auto; transform: translateY(-20px); transition: transform 0.3s ease;
+    }
+    .modal-overlay.show .modal-content { transform: translateY(0); }
+
+    #searchControl { position: absolute; top: 5rem; left: .5rem; z-index: 5000; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <header class="bg-blue-800 text-white flex items-center justify-between p-4 shadow-md h-16">
+    <div class="flex items-center">
+      <img src="logo_ngeo.png" alt="Logo NGEO IDEFLOR-Bio" class="h-12 w-auto mr-4" />
+      <span class="text-xl font-bold">Visualizador de Viveiros - IDEFLOR-Bio</span>
+    </div>
+    <button id="aboutAppBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+      Sobre o App
+    </button>
+  </header>
+
+  <div id="searchControl" class="bg-white p-4 rounded-lg shadow-lg w-80 space-y-3">
+    <label for="columnSelect" class="block text-gray-700 font-semibold">Coluna</label>
+    <select id="columnSelect" class="w-full text-sm p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></select>
+
+    <label for="valueSelect" class="block text-gray-700 font-semibold">Valor</label>
+    <select id="valueSelect" disabled class="w-full text-sm p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></select>
+
+    <div class="flex gap-2 pt-1">
+      <button id="applyFilterBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition">Aplicar</button>
+      <button id="clearFiltersBtn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-md transition">Limpar</button>
+    </div>
+
+    <div class="text-xs text-gray-600 flex items-center gap-2">
+      <span id="countBadge" class="px-2 py-1 rounded bg-gray-100 border border-gray-300">0 selecionados</span>
+      <a id="downloadBtn" class="text-blue-700 underline" href="#" download="viveiros_filtrado.geojson">Baixar filtro</a>
+    </div>
+  </div>
+
+  <div id="map" class="relative"></div>
+
+  <div id="aboutAppModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Sobre o Aplicativo</h2>
+      <p class="text-gray-700 mb-4">
+        Este mapa web foi elaborado para atender a demanda de produção de geoinformações do processo <strong>2025/2460154 / IDEFLORBIO</strong>. O objetivo é facilitar a visualização e a pesquisa dos viveiros cadastrados, bem como as áreas de municípios e Unidades de Conservação relevantes.
+      </p>
+      <hr class="my-4">
+      <p class="text-sm text-gray-600 mb-2">
+        Desenvolvido por
+        <a href="https://samuel-c-santos.github.io/" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">
+          Samuel C. Santos – Coordenador de Geotecnologias do IDEFLOR-Bio
+        </a>.
+      </p>
+      <button id="closeModalBtn" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+        Fechar
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- Estado Global ---------- */
+    let map;
+    let originalViveirosLayer, filteredViveirosLayer;
+    let municipiosLayer, ucsLayer, regioesIntegracaoLayer;
+    let viveirosFeatures = [];
+    let originalFC = null;
+    let legendControl;
+    let riFieldName = null, riColorMap = {};
+
+    /* ---------- UI refs ---------- */
+    const colSel = document.getElementById('columnSelect');
+    const valSel = document.getElementById('valueSelect');
+    const applyBtn = document.getElementById('applyFilterBtn');
+    const clearBtn = document.getElementById('clearFiltersBtn');
+    const countEl = document.getElementById('countBadge');
+    const dlBtn = document.getElementById('downloadBtn');
+
+    /* ---------- Utils do filtro ---------- */
+    const norm = v => (v === null || v === undefined) ? '' : String(v).trim();
+    const uniq = arr => Array.from(new Set(arr));
+
+    /* ---------- Estilos/cores ---------- */
+    const fallbackPalette = ['#9e9e9e','#c0a688','#607d8b','#a1887f','#795548','#bcaaa4','#d7ccc8','#8d6e63','#455a64','#b0bec5','#546e7a','#a9746e','#ef6c00'];
+    const predefinedRiColors = {
+      'ARAGUAIA':'#9e9e9e','BAIXO AMAZONAS':'#c0a688','CAETE':'#607d8b','CARAJAS':'#a1887f',
+      'GUAMA':'#795548','LAGO DE TUCURUI':'#bcaaa4','MARAJO':'#d7ccc8','RIO CAPIM':'#8d6e63',
+      'TAPAJOS':'#455a64','TOCANTINS':'#b0bec5','REGIONAL XINGU':'#546e7a','XINGU':'#546e7a'
+    };
+    const ucsColors = { 'Uso Sustentável':'#4CAF50', 'Proteção Integral':'#1E88E5' };
+    const getViveirosStyle = () => ({ radius:8, fillColor:"#007BFF", color:"#fff", weight:1, opacity:1, fillOpacity:.85 });
+    const getMunicipiosStyle = () => ({ fillColor:'transparent', weight:1, opacity:.8, color:'black', dashArray:'5, 5', fillOpacity:0 });
+    const getUcsStyle = f => ({ fillColor: ucsColors[f.properties['GRUPO']] || '#808080', weight:2, opacity:1, color:'black', fillOpacity:.6 });
+    const getRegioesIntegracaoStyle = f => {
+      const nome = f.properties?.[riFieldName];
+      const c = nome && riColorMap[nome] ? riColorMap[nome] : '#808080';
+      return { fillColor:c, weight:2, opacity:1, color:'black', fillOpacity:.9 };
+    };
+
+    /* ---------- Popups ---------- */
+    function onEachViveiroFeature(feature, layer){
+      const props = feature.properties || {};
+      const html = `<div class="p-2 text-sm">${Object.entries(props).map(([k,v])=>`<strong>${k}:</strong> ${v}<br>`).join('')}</div>`;
+      layer.bindPopup(html);
+    }
+    function onEachRegioesIntegracaoFeature(f,l){ l.bindPopup(`<strong>Região de Integração:</strong> ${f.properties?.[riFieldName] ?? '—'}`); }
+    function onEachMunicipiosFeature(f,l){ const m=f.properties?.['MUNICIPIO']; if(m) l.bindPopup(`<strong>Município:</strong> ${m}`); }
+    function onEachUcsFeature(f,l){ const n=f.properties?.['NOME_UC'], g=f.properties?.['GRUPO']; l.bindPopup(`<strong>Unidade de Conservação:</strong> ${n}<br><strong>Grupo:</strong> ${g}`); }
+
+    /* ---------- Legenda ---------- */
+    function createLegend(){
+      legendControl = L.control({position:'bottomright'});
+      legendControl.onAdd = () => {
+        const div = L.DomUtil.create('div','legend');
+        div.innerHTML = '';
+        return div;
+      };
+      legendControl.addTo(map);
+      updateLegend();
+    }
+    function updateLegend(){
+      const el = document.querySelector('.legend'); if(!el) return;
+      let html = '<strong>Legenda</strong><br>';
+      if (originalViveirosLayer && map.hasLayer(originalViveirosLayer)) html += `<i style="background:#007BFF"></i> Viveiros<br>`;
+      if (filteredViveirosLayer && map.hasLayer(filteredViveirosLayer)) html += `<i style="background:#007BFF"></i> Viveiros<br>`;
+      if (ucsLayer && map.hasLayer(ucsLayer)) {
+        html += '<br><strong>Unidades de Conservação</strong><br>';
+        for (const k in ucsColors) html += `<i style="background:${ucsColors[k]}"></i> ${k}<br>`;
+      }
+      if (regioesIntegracaoLayer && map.hasLayer(regioesIntegracaoLayer)) {
+        html += '<br><strong>Regiões de Integração</strong><br>';
+        Object.keys(riColorMap).forEach(n => { html += `<i style="background:${riColorMap[n]}; opacity:.9;"></i> ${n}<br>`; });
+      }
+      if (municipiosLayer && map.hasLayer(municipiosLayer)) html += `<br><strong>Municípios</strong><br><i style="background:transparent; border:1px dashed black"></i> Limite Municipal<br>`;
+      el.innerHTML = html;
+    }
+
+    /* ---------- Funções de Filtro e Mapas ---------- */
+    function makePointsLayer(fc){
+      return L.geoJSON(fc, {
+        pane:'viveirosPane',
+        pointToLayer: (feat, latlng) => L.circleMarker(latlng, getViveirosStyle(feat)),
+        onEachFeature: onEachViveiroFeature
+      });
+    }
+
+    function updateCount(n){ countEl.textContent = `${n} selecionado${n===1?'':'s'}`; }
+
+    function fitToLayer(layer){
+      const b = layer.getBounds?.();
+      if (b && b.isValid && b.isValid()) map.flyToBounds(b, { padding: [30,30], duration: 0.6, maxZoom: 13 });
+    }
+
+    function buildDownload(fc){
+      try{
+        const blob = new Blob([JSON.stringify(fc, null, 2)], { type: 'application/geo+json' });
+        const url  = URL.createObjectURL(blob);
+        dlBtn.href = url; dlBtn.download = 'viveiros_filtrado.geojson';
+      }catch(e){}
+    }
+
+    function populateColumns(){
+      const first = viveirosFeatures.find(f => f && f.properties) || null;
+      const keys  = first ? Object.keys(first.properties) : [];
+      colSel.innerHTML = '';
+      if (!keys.length) {
+        const opt = document.createElement('option'); opt.value=''; opt.textContent='(sem colunas)';
+        colSel.appendChild(opt); colSel.disabled = true; return;
+      }
+      const ph = document.createElement('option'); ph.value=''; ph.textContent='— escolha a coluna —'; colSel.appendChild(ph);
+      keys.forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; colSel.appendChild(o); });
+      colSel.disabled = false;
+      valSel.innerHTML=''; valSel.disabled = true;
+    }
+
+    function populateValues(column){
+      const values = viveirosFeatures.map(f => f?.properties?.[column]).map(norm);
+      const uniqVals = uniq(values).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true,sensitivity:'base'}));
+      valSel.innerHTML = '';
+      const ph = document.createElement('option'); ph.value=''; ph.textContent='— escolha o valor —'; valSel.appendChild(ph);
+      const all = document.createElement('option'); all.value='__ALL__'; all.textContent='(Todos)'; valSel.appendChild(all);
+      uniqVals.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=(v===''?'(vazio)':v); valSel.appendChild(o); });
+      valSel.disabled = false;
+      valSel.value = '__ALL__';
+    }
+
+    function filterFC(column, value){
+      if (!column || !value || value === '__ALL__') {
+        return { type:'FeatureCollection', features: viveirosFeatures };
+      }
+      return {
+        type:'FeatureCollection',
+        features: viveirosFeatures.filter(f => norm(f?.properties?.[column]) === norm(value))
+      };
+    }
+
+    function refreshMap(fc) {
+      if (filteredViveirosLayer) { map.removeLayer(filteredViveirosLayer); filteredViveirosLayer = null; }
+      if (originalViveirosLayer && map.hasLayer(originalViveirosLayer)) map.removeLayer(originalViveirosLayer);
+
+      if (fc.features.length === viveirosFeatures.length) {
+        if (originalViveirosLayer) {
+          originalViveirosLayer.addTo(map);
+          originalViveirosLayer.bringToFront();
+        }
+      } else {
+        filteredViveirosLayer = makePointsLayer(fc).addTo(map);
+        filteredViveirosLayer.bringToFront();
+        fitToLayer(filteredViveirosLayer);
+      }
+      updateCount(fc.features.length);
+      buildDownload(fc);
+      updateLegend();
+    }
+    
+    function detectRiFieldName(sampleProps){
+      const keys = Object.keys(sampleProps||{});
+      const pats = [/REGIAO/,/INTEGRAC/,/^RI$|NOME_RI|RI_NOME|REG/i];
+      for (const p of pats){ const hit = keys.find(k=>p.test(k.toUpperCase())); if(hit) return hit; }
+      for (const k of keys){ const v = sampleProps[k]; if (v && predefinedRiColors[String(v).toUpperCase()]) return k; }
+      return keys[0] || null;
+    }
+    function buildRiColorMap(features){
+      const set = new Set();
+      features.forEach(f=>{ const v=f.properties?.[riFieldName]; if(v!=null && String(v).trim()!=='') set.add(String(v)); });
+      const values = Array.from(set).sort();
+      const map={}; let i=0;
+      values.forEach(v=>{ const key=String(v).trim().toUpperCase(); map[v]=predefinedRiColors[key] || fallbackPalette[i++%fallbackPalette.length]; });
+      return map;
+    }
+
+
+    /* ---------- Boot ---------- */
+    window.onload = async function () {
+      const googleRelief = L.tileLayer('https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', { maxZoom: 18, attribution: '&copy; Google' });
+      const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '&copy; Google' });
+      const bingSat = L.tileLayer('https://ecn.t3.tiles.virtualearth.net/tiles/a{q}.jpeg?g=0', { attribution: '&copy; Bing Maps', maxZoom: 18 });
+      const sentinel2 = L.tileLayer.wms('https://tiles.maps.eox.at/wms', { layers: 's2cloudless-2024_3857', format: 'image/jpeg', attribution: '© EOX IT Services' });
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' });
+      const cartoDbVoy = L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png', { maxZoom: 20, attribution: '&copy; CARTO' });
+
+      const baseLayers = {
+        "Google Relevo com Rótulos": googleRelief,
+        "Google Satellite": googleSat,
+        "Bing Satellite": bingSat,
+        "Sentinel-2 cloudless layer": sentinel2,
+        "OpenStreetMap": osm,
+        "CartoDB Voyager": cartoDbVoy
+      };
+
+      map = L.map('map', { center: [-5.0, -50.0], zoom: 6, layers: [googleRelief] });
+
+      map.createPane('regioesPane'); map.getPane('regioesPane').style.zIndex = 300;
+      map.createPane('municipiosPane'); map.getPane('municipiosPane').style.zIndex = 350;
+      map.createPane('ucsPane'); map.getPane('ucsPane').style.zIndex = 400;
+      map.createPane('viveirosPane'); map.getPane('viveirosPane').style.zIndex = 650;
+
+      try {
+        const [viveirosRes, municipiosRes, ucsRes, regioesRes] = await Promise.all([
+          fetch('data/viveiros.geojson', { cache:'no-store' }),
+          fetch('data/municipios.geojson'),
+          fetch('data/ucs_estaduais.geojson'),
+          fetch('data/regioes_integracao.geojson')
+        ]);
+        
+        const [viveirosData, municipiosData, ucsData, regioesData] = await Promise.all([
+          viveirosRes.json(), municipiosRes.json(), ucsRes.json(), regioesRes.json()
+        ]);
+        
+        if (!viveirosData || !Array.isArray(viveirosData.features)) {
+          throw new Error('O arquivo viveiros.geojson está vazio ou mal formatado.');
+        }
+
+        originalFC = viveirosData;
+        viveirosFeatures = viveirosData.features;
+
+        riFieldName = detectRiFieldName((regioesData.features?.[0]||{}).properties||{});
+        riColorMap  = buildRiColorMap(regioesData.features||[]);
+        
+        originalViveirosLayer = makePointsLayer(originalFC);
+
+        municipiosLayer = L.geoJSON(municipiosData, { pane:'municipiosPane', style:getMunicipiosStyle, onEachFeature:onEachMunicipiosFeature });
+        ucsLayer = L.geoJSON(ucsData, { pane:'ucsPane', style:getUcsStyle, onEachFeature:onEachUcsFeature });
+        regioesIntegracaoLayer = L.geoJSON(regioesData, { pane:'regioesPane', style:getRegioesIntegracaoStyle, onEachFeature:onEachRegioesIntegracaoFeature });
+
+        const overlayLayers = {
+          "Viveiros": originalViveirosLayer,
+          "Unidades de Conservação": ucsLayer,
+          "Municípios": municipiosLayer,
+          "Regiões de Integração": regioesIntegracaoLayer
+        };
+        L.control.layers(baseLayers, overlayLayers).addTo(map);
+
+        if (regioesIntegracaoLayer) regioesIntegracaoLayer.addTo(map);
+        if (municipiosLayer) municipiosLayer.addTo(map);
+        if (ucsLayer) ucsLayer.addTo(map);
+        if (originalViveirosLayer) {
+          originalViveirosLayer.addTo(map);
+          originalViveirosLayer.bringToFront();
+        }
+
+        createLegend();
+        map.on('overlayadd', updateLegend);
+        map.on('overlayremove', updateLegend);
+        map.on('baselayerchange', updateLegend);
+        map.on('layeradd', () => {
+          if (originalViveirosLayer) originalViveirosLayer.bringToFront();
+          if (filteredViveirosLayer) filteredViveirosLayer.bringToFront();
+          updateLegend();
+        });
+        map.on('layerremove', updateLegend);
+
+        populateColumns();
+        refreshMap(originalFC);
+
+        if (regioesIntegracaoLayer && regioesIntegracaoLayer.getBounds().isValid()) {
+            map.fitBounds(regioesIntegracaoLayer.getBounds());
+        }
+      } catch (err) {
+        alert('Falha ao carregar os dados geoespaciais: ' + err.message);
+        console.error(err);
+      }
+
+      /* ---------- Eventos UI ---------- */
+      colSel.addEventListener('change', () => {
+        const col = colSel.value;
+        if (!col) {
+          valSel.innerHTML = '';
+          valSel.disabled = true;
+          refreshMap(originalFC);
+          return;
+        }
+        populateValues(col);
+        valSel.value = '__ALL__';
+        const filtered = filterFC(col, valSel.value);
+        refreshMap(filtered);
+      });
+
+      applyBtn.addEventListener('click', () => {
+        const col = colSel.value;
+        const val = valSel.value;
+        const filtered = filterFC(col, val);
+        refreshMap(filtered);
+      });
+      
+      valSel.addEventListener('change', () => {
+        const col = colSel.value;
+        const val = valSel.value;
+        const filtered = filterFC(col, val);
+        refreshMap(filtered);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        colSel.value = '';
+        valSel.innerHTML = '';
+        valSel.disabled = true;
+        refreshMap(originalFC);
+      });
+
+      const aboutAppBtn = document.getElementById('aboutAppBtn');
+      const aboutAppModal = document.getElementById('aboutAppModal');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      aboutAppBtn.addEventListener('click', ()=>aboutAppModal.classList.add('show'));
+      closeModalBtn.addEventListener('click', ()=>aboutAppModal.classList.remove('show'));
+      aboutAppModal.addEventListener('click', (e)=>{ if (e.target===aboutAppModal) aboutAppModal.classList.remove('show'); });
+    };
+  </script>
+</body>
+</html>

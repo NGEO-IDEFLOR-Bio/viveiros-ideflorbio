@@ -1,0 +1,15 @@
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores / IDEs
+.vscode/
+.idea/
+
+# Dependências e logs
+node_modules/
+*.log
+
+# Arquivo local de desenvolvimento (não publicado)
+.dev/
