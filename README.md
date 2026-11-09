@@ -19,6 +19,16 @@ Aplicativo web de consulta do sistema de viveiros do **PROSAF**, desenvolvido pe
 
 ---
 
+## Capturas
+
+![Home do Guia dos Viveiros](demo/guia_inicial.png)
+
+![Catálogo de viveiros](demo/guia_catalogo.png)
+
+![Componentes do modelo 12 × 18 m](demo/guia_componentes.png)
+
+---
+
 ## Dados
 
 A base atual tem **288 viveiros** em **102 municípios** e **12 regionais**. A capacidade declarada soma **4.484.185 mudas**. Desses viveiros, **60 estão em 7 UCs estaduais**, sendo 40 na APA Triunfo do Xingu.
