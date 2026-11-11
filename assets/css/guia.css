@@ -468,10 +468,10 @@ details.mat-group[open] summary::after { content: "−"; }
 .diagram-svg .irrigation-dot { fill: var(--blue); }
 .diagram-svg .anchor { fill: none; stroke: var(--amber); stroke-width: 1; }
 .diagram-svg .anchor-dot { fill: var(--amber); }
-.diagram-svg .label { fill: var(--muted); font-size: 9px; }
-.diagram-svg .label-strong { fill: var(--green-dark); font-size: 9px; }
-.diagram-svg .label-water { fill: var(--blue); font-size: 9px; }
-.diagram-svg .label-anchor { fill: var(--amber); font-size: 9px; }
+.diagram-svg .label { fill: var(--muted); font-size: 10px; }
+.diagram-svg .label-strong { fill: var(--green-dark); font-size: 10px; }
+.diagram-svg .label-water { fill: var(--blue); font-size: 10px; }
+.diagram-svg .label-anchor { fill: var(--amber); font-size: 10px; }
 .diagram-svg .ground { stroke: var(--line-strong); stroke-width: 1.5; }
 .diagram-svg .concrete { fill: var(--line); }
 .diagram-svg .roof { fill: var(--green); fill-opacity: .22; stroke: var(--green); stroke-width: 1.4; }
@@ -479,7 +479,7 @@ details.mat-group[open] summary::after { content: "−"; }
 .diagram-svg .water { fill: var(--blue-soft); stroke: var(--blue); stroke-width: 1.2; }
 .diagram-svg .pump { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.2; }
 .diagram-svg .number { fill: var(--white); stroke: var(--line-strong); stroke-width: 1; }
-.diagram-svg .number-text { fill: var(--green-dark); font-size: 8px; font-weight: 700; }
+.diagram-svg .number-text { fill: var(--green-dark); font-size: 9px; font-weight: 700; }
 .diagram-svg .barracao { fill: var(--paper-2); stroke: var(--line-strong); stroke-width: 1.2; }
 
 /* ---------------------------------------------------------------- */

@@ -1052,44 +1052,66 @@ function renderProfile(kind, slug) {
 /* Entenda                                                             */
 /* ------------------------------------------------------------------ */
 function planSvg() {
+  // Estrutura 18 × 12 m: retângulo de 80,108 com largura 336 (18m) e altura 224 (12m).
+  // Escala: 336 px / 18 m = 18.667 px/m; 224 px / 12 m = 18.667 px/m.
+  // Vãos de 6 m:
+  // Eixos X (longitudinal 18 m): 0 m (80), 6 m (192), 12 m (304), 18 m (416)
+  // Eixos Y (transversal 12 m): 0 m (108), 6 m (220), 12 m (332)
+  // Total de 12 colunas: 8 perimetrais + 4 no eixo central Y=220 (2 internas + 2 testeiras)
   const columns = [];
-  for (const x of [64, 172, 280, 388, 496]) {
-    columns.push(`<circle class="column" cx="${x}" cy="60" r="4.2"/><circle class="column" cx="${x}" cy="372" r="4.2"/>`);
+  for (const x of [80, 192, 304, 416]) {
+    columns.push(`<circle class="column" cx="${x}" cy="108" r="4.2"/><circle class="column" cx="${x}" cy="332" r="4.2"/>`);
   }
-  for (const y of [138, 216, 294]) {
-    columns.push(`<circle class="column" cx="64" cy="${y}" r="4.2"/><circle class="column" cx="496" cy="${y}" r="4.2"/><circle class="column" cx="280" cy="${y}" r="4.2"/>`);
+  for (const x of [80, 192, 304, 416]) {
+    columns.push(`<circle class="column" cx="${x}" cy="220" r="3.8"/>`);
   }
-  const laterals = [96, 140, 184, 228, 272, 316].map((y) => `<line class="irrigation" x1="76" y1="${y}" x2="484" y2="${y}"/>`).join('');
-  const dots = [96, 140, 184, 228, 272, 316].flatMap((y) => [110, 230, 350, 470].map((x) => `<circle class="irrigation-dot" cx="${x}" cy="${y}" r="2.7"/>`)).join('');
+
+  // Irrigação: 6 linhas laterais e 24 microaspersores (4 por linha)
+  // Laterais distribuídas uniformemente no vão de 12 m
+  const laterals = [128, 164, 202, 238, 276, 312].map((y) => `<line class="irrigation" x1="88" y1="${y}" x2="408" y2="${y}"/>`).join('');
+  const dots = [128, 164, 202, 238, 276, 312].flatMap((y) => [122, 192, 304, 374].map((x) => `<circle class="irrigation-dot" cx="${x}" cy="${y}" r="2.6"/>`)).join('');
+
+  // 10 Mãos de força (estaiamento):
+  // 4 nos cantos (2,85 m na diagonal) e 6 nas colunas intermediárias (2 m para fora)
+  // Cantos: (80,108)->(56,84), (416,108)->(440,84), (80,332)->(56,356), (416,332)->(440,356)
+  // Laterais comprimento (Y=108 e Y=332 em X=192 e X=304): para fora ~37px (2 m)
+  // Laterais testeira (X=80 e X=416 em Y=220): para fora ~37px (2 m)
   const anchors = [
-    [64, 60, 38, 34], [496, 60, 522, 34], [64, 372, 38, 398], [496, 372, 522, 398],
-    [280, 60, 280, 34], [280, 372, 280, 398],
+    // 4 cantos
+    [80, 108, 56, 84], [416, 108, 440, 84], [80, 332, 56, 356], [416, 332, 440, 356],
+    // 2 nas testeiras (colunas centrais de entrada/saída)
+    [80, 220, 43, 220], [416, 220, 453, 220],
+    // 4 nas laterais dos 18 m (colunas dos vãos de 6 m)
+    [192, 108, 192, 71], [304, 108, 304, 71],
+    [192, 332, 192, 369], [304, 332, 304, 369],
   ].map(([x1, y1, x2, y2]) => `<line class="anchor" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/><circle class="anchor-dot" cx="${x2}" cy="${y2}" r="2.6"/>`).join('');
+
   return `
-  <svg class="diagram-svg" viewBox="0 0 560 440" role="img" aria-labelledby="plan-title plan-desc">
+  <svg class="diagram-svg" viewBox="0 0 460 400" role="img" aria-labelledby="plan-title plan-desc">
     <title id="plan-title">Planta do viveiro de 12 por 18 metros</title>
-    <desc id="plan-desc">Planta esquemática com a área livre de 16 por 22 metros, a estrutura de 18 por 12 metros, colunas, estaiamento, linhas de irrigação e microaspersores.</desc>
-    <rect x="20" y="20" width="520" height="400" fill="none" stroke="#b9b4a9" stroke-dasharray="4 4"/>
-    <text class="label" x="26" y="14">área livre 16 × 22 m</text>
-    <rect class="structure" x="64" y="60" width="432" height="312"/>
-    <text class="label-strong" x="72" y="52">estrutura 18 × 12 m · 216 m²</text>
-    <text class="label-strong" x="72" y="78">cobertura de sombrite 50%</text>
+    <desc id="plan-desc">Planta esquemática com a área livre de 16 por 22 metros, a estrutura de 18 por 12 metros, colunas em vãos de 6 metros, 10 mãos de força, linhas de irrigação e microaspersores.</desc>
+    <rect x="34" y="38" width="412" height="334" fill="none" stroke="#b9b4a9" stroke-dasharray="4 4"/>
+    <text class="label" x="38" y="28">área livre 16 × 22 m</text>
+    <text class="label" x="24" y="220" transform="rotate(-90 24 220)" text-anchor="middle">12 m</text>
+    <text class="label" x="248" y="392" text-anchor="middle">18 m</text>
+
+    <rect class="structure" x="80" y="108" width="336" height="224"/>
     ${laterals}
-    <line class="irrigation-main" x1="64" y1="348" x2="496" y2="348"/>
+    <line class="irrigation-main" x1="80" y1="312" x2="416" y2="312"/>
     ${dots}
     ${columns}
     ${anchors}
-    <text class="label" x="250" y="426">18 m</text>
-    <text class="label" x="20" y="222" transform="rotate(-90 20 222)">12 m</text>
-    <text class="label-anchor" x="330" y="40">mãos de força</text>
-    <text class="label-water" x="330" y="334">microaspersão</text>
-    <text class="label-water" x="330" y="362">linha principal</text>
-    <text class="label-strong" x="330" y="98">linhas laterais</text>
-    <text class="label-strong" x="78" y="98">colunas</text>
-    <circle class="number" cx="60" cy="60" r="9"/><text class="number-text" x="60" y="63" text-anchor="middle">1</text>
-    <circle class="number" cx="38" cy="34" r="9"/><text class="number-text" x="38" y="37" text-anchor="middle">2</text>
-    <circle class="number" cx="250" cy="50" r="9"/><text class="number-text" x="250" y="53" text-anchor="middle">3</text>
-    <circle class="number" cx="450" cy="316" r="9"/><text class="number-text" x="450" y="319" text-anchor="middle">4</text>
+
+    <text class="label-strong" x="80" y="52">estrutura 18 × 12 m · 216 m²</text>
+    <text class="label-strong" x="80" y="94">cobertura de sombrite 50%</text>
+    <text class="label-strong" x="92" y="122">linhas laterais</text>
+    <text class="label-water" x="92" y="324">linha principal</text>
+    <text class="label-anchor" x="430" y="68" text-anchor="end">10 mãos de força</text>
+
+    <circle class="number" cx="80" cy="108" r="9"/><text class="number-text" x="80" y="111" text-anchor="middle">1</text>
+    <circle class="number" cx="440" cy="84" r="9"/><text class="number-text" x="440" y="87" text-anchor="middle">2</text>
+    <circle class="number" cx="248" cy="148" r="9"/><text class="number-text" x="248" y="151" text-anchor="middle">3</text>
+    <circle class="number" cx="374" cy="238" r="9"/><text class="number-text" x="374" y="241" text-anchor="middle">4</text>
   </svg>`;
 }
 
